@@ -1,2 +1,231 @@
 # HR-Data-Analysis
 I analysed HR management data using SQL to extract key insights for the HR department. I then visualized my findings in Power BI to support informed decision-making and strategic workforce planning.
+
+Analysis Questions:
+1. What is the gender breakdown in the Company?
+2. How many employees work remotely for each department?
+3. What is the distribution of employees who work remotely and HQ
+4. What is the race distribution in the Company?
+5. What is the distribution of employees across different states?
+6. What is the number of employees whose employment has been terminated
+7. Who is/are the longest-serving employee in the organisation?
+8. Return the terminated employees by their race
+9. What is the age distribution in the Company?
+10. How have employee hire counts varied over time?
+11. What is the tenure distribution for each department?
+12. What is the average length of employment in the company
+
+To view the data in MySQL
+select * from original_data;
+
+Create a working table to avoid loss of data
+CREATE TABLE work_table
+LIKE original_data;
+
+INSERT work_table
+SELECT * 
+FROM original_data;
+
+Verify records in table
+select *
+from work_table;
+
+#change all the date columns to date format
+#check before updating
+select birthdate,STR_TO_DATE(birthdate, '%m/%d/%Y')
+from work_table;
+
+UPDATE work_table
+SET birthdate = STR_TO_DATE(birthdate, '%m/%d/%Y')
+WHERE birthdate IS NOT NULL;
+
+#check before updating
+select hire_date, STR_TO_DATE(hire_date, '%m/%d/%Y')
+from work_table;
+
+UPDATE work_table
+SET hire_date = STR_TO_DATE(hire_date, '%m/%d/%Y')
+WHERE hire_date IS NOT NULL;
+
+
+#Change columns to date type
+ALTER TABLE work_table
+MODIFY birthdate DATE;
+
+ALTER TABLE work_table
+MODIFY hire_date DATE;
+
+#remove time and UTC from termdate column
+#test case
+SELECT termdate, DATE(STR_TO_DATE(LEFT(termdate, 19), '%Y-%m-%d %H:%i:%s')) AS converted_date
+FROM work_table
+WHERE termdate is not null;
+
+#update values in table
+UPDATE work_table
+SET termdate = DATE(STR_TO_DATE(LEFT(termdate, 19), '%Y-%m-%d %H:%i:%s'))
+WHERE termdate LIKE '____-__-__%';
+
+#Handle null values in termdate
+UPDATE work_table
+SET termdate = NULL
+WHERE termdate = '';
+
+#change column type
+ALTER TABLE work_table
+MODIFY termdate DATE;
+
+#Check for errors/typos in all columns
+SELECT DISTINCT gender
+FROM work_table
+group by gender;
+
+SELECT DISTINCT race
+FROM work_table
+group by race;
+
+SELECT DISTINCT department
+FROM work_table
+group by department
+order by department;
+
+SELECT DISTINCT jobtitle
+FROM work_table
+group by jobtitle
+order by jobtitle;
+
+SELECT DISTINCT location
+FROM work_table
+group by location
+order by location;
+
+SELECT DISTINCT location_city
+FROM work_table
+group by location_city
+order by location_city;
+
+SELECT DISTINCT location_state
+FROM work_table
+group by location_state
+order by location_state;
+
+#Change column names (personal preference)
+ALTER TABLE work_table
+CHANGE location work_mode VARCHAR(255);
+
+ALTER TABLE work_table
+CHANGE location_city city VARCHAR(255);
+
+ALTER TABLE work_table
+CHANGE location_state state VARCHAR(255);
+
+ALTER TABLE work_table
+CHANGE ï»¿id ID VARCHAR(255);
+
+#Answering Analysis Questions
+#1 What is the gender breakdown in the company?
+SELECT DISTINCT gender, count(*) as num_employees
+FROM work_table
+group by gender;
+
+#2 How many employees work remotely for each department?
+select department, count(*) as 'Remote Workers'
+from work_table
+where work_mode = "Remote"
+group by department
+order by department;
+
+#3 What is the distribution of employees who work remotely and HQ
+select work_mode, count(*) num_employees
+from work_table
+group by work_mode;
+
+#4. What is the race distribution in the Company?
+select race, count(*) num_employees
+from work_table
+group by race
+order by num_employees desc;
+
+#5. What is the distribution of employees across different states?
+select state, count(*) num_employees
+from work_table
+group by state
+order by num_employees desc;
+
+#6. What is the number of employees whose employment has been terminated
+select count(*) as emp_term
+from work_table
+where termdate is not null and termdate < curdate();
+
+#7. Who is/are the longest-serving employee(s) in the organisation?
+select min(hire_date) earliest_hire_date
+from work_table;
+#17/10/2000
+
+SELECT first_name, last_name
+FROM work_table
+WHERE hire_date = (
+    SELECT MIN(hire_date)
+    FROM work_table
+);
+
+#8. Return the terminated employees by their race
+select race, count(*) as terminated_employees
+from work_table
+where termdate is not null and termdate < curdate()
+group by race;
+
+#9. What is the age distribution in the Company?
+#Create age and age group columns
+alter table work_table
+add column age int;
+
+UPDATE work_table
+SET age = TIMESTAMPDIFF(YEAR, birthdate, CURDATE());
+
+alter table work_table
+add column age_range text;
+
+UPDATE work_table SET age_range = "20-25" where age in (20,21,22,23,24,25);
+UPDATE work_table SET age_range = "25-30" where age in (26,27,28,29,30);
+UPDATE work_table SET age_range = "31-35" where age in (31,32,33,34,35);
+UPDATE work_table SET age_range = "36-40" where age in (36,37,38,39,40);
+UPDATE work_table SET age_range = "41-45" where age in (41,42,43,44,45);
+UPDATE work_table SET age_range = "46-50" where age in (46,47,48,49,50);
+UPDATE work_table SET age_range = "51-55" where age in (51,52,53,54,55);
+UPDATE work_table SET age_range = "56-60" where age in (56,57,58,59,60);
+
+select age_range, count(*)
+from work_table
+group by 1
+order by 1;
+
+#10. How have employee hire counts varied over time
+select year(hire_date) as Years, count(*) as emp_hired
+from work_table
+group by 1
+order by 2 desc;
+
+#11. What is the tenure distribution for each department?
+#make tenure column
+alter table work_table
+add column tenure int;
+
+#update values
+update work_table
+set tenure = timestampdiff(year,hire_date,termdate);
+
+update work_table
+set tenure = timestampdiff(year,hire_date,curdate())
+where termdate is null;
+
+#average years spent per department
+select department, round(avg(tenure)) as avg_tenure
+from work_table
+group by 1
+order by 1;
+
+#12. What is the average length of employment in the company
+select round(avg(tenure)) as 'Average Employment Years'
+from work_table;
+
