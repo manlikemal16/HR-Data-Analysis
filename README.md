@@ -1,5 +1,5 @@
 # HR-Data-Analysis
-I analysed HR management data using SQL to extract key insights for the HR department to support informed decision-making.
+I analyzed HR management data using SQL to extract key insights for the HR department to support informed decision-making.
 
 Analysis Questions:
 1. What is the gender breakdown in the Company?
